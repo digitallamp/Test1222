@@ -1,0 +1,1092 @@
+export default {
+  data() {
+    return {
+      member_profile: null,
+      members: [],
+      member_concern: "",
+      member_concernError: false,
+      member_concernErrorText: "",
+    };
+  },
+  components: {
+    VueElementLoading,
+    PulseLoader,
+    "font-awesome-icon": FontAwesomeIcon,
+    DatePick,
+    Carousel,
+    Slide,
+  },
+
+  data: () => ({
+    msg: null,
+    date: new Date(),
+    disabledAfter: new Date(),
+    user_access_token: localStorage.getItem("user_access_token"),
+    member_profile: JSON.parse(localStorage.getItem("member_profile")),
+    final_array: JSON.parse(localStorage.getItem("final_array")),
+    service_url_id: localStorage.getItem("service_url_id"),
+    min_date: "",
+    max_date: "",
+    format: "YYYY.MM.DD",
+
+    pin_found: false,
+    pincode: "",
+    addressline1: "",
+    addressline2: "",
+    city: "",
+    member_doctor: "",
+    member_concern: "",
+    exercise: "",
+    pincodeError: false,
+    addressline1Error: false,
+    addressline2Error: false,
+    cityError: false,
+    member_doctorError: false,
+    member_concernError: false,
+    exerciseError: false,
+
+    member_first_name_Error: false,
+    member_last_name_Error: false,
+    member_mobile_Error: false,
+    member_email_Error: false,
+    member_slot_Error: false,
+    member_date_Error: false,
+
+    member_first_name_ErrorText: "",
+    member_last_name_ErrorText: "",
+    member_mobile_ErrorText: "",
+    member_email_ErrorText: "",
+    member_slot_ErrorText: "",
+    member_date_ErrorText: "",
+
+    successMessage: false,
+    pincodeErrorText: "",
+    addressline1ErrorText: "",
+    addressline2ErrorText: "",
+    cityErrorText: "",
+    member_doctorErrorText: "",
+    member_concernErrorText: "",
+    exerciseErrorText: "",
+    successMessageText: "",
+    save_service_id: "",
+    coach_calendly_link: "",
+    assign_lab_test: "",
+    devloader: false,
+    service_data: [],
+    service_urlName: "",
+    service_plan: [],
+    banner_title: "",
+    diagnostics_page: true,
+    diagnostics_test: [],
+    diagnostics_test_id: "",
+
+    member_first_name: "",
+    member_last_name: "",
+    member_mobile: "",
+    member_email: "",
+    member_slot: "",
+    member_date: "",
+    doctors_list: [],
+    slots_list: [],
+    docEmail: "",
+    uberfit_exercise: [],
+    openDoc_loader: false,
+    openSlot_loader: false,
+    change: true,
+    diagnostics_member_date: "",
+    diagnostics_member_slot: "",
+    diagnostics_slots_list: [],
+  }),
+  created() {
+    console.log("Component created.");
+    this.get_diagnostics_tests();
+  },
+  computed: {
+    member_unique_id() {
+      return this.member_profile.member_unique_id;
+    },
+  },
+  mounted() {
+    this.fetchMembers(); // Call the fetchMembers() method when component is mounted
+    if (this.member_profile) {
+      this.member_first_name = this.member_profile.first_name;
+      this.member_last_name = this.member_profile.last_name;
+      this.member_mobile = this.member_profile.phone_number_primary;
+      this.member_email = this.member_profile.email;
+    }
+
+    this.banner_title = this.$router.history.current.path.replaceAll(
+      "/service/",
+      ""
+    );
+    console.log("service_url_id", this.service_url_id);
+    console.log("service_url_id", this.$router.history.current.path);
+    if (this.$router.history.current.path == "/service/diagnostics") {
+      this.diagnostics_page = true;
+      this.get_tests();
+    } else {
+      this.diagnostics_page = false;
+      this.get_service_by_id();
+    }
+    if (!this.isMobile()) {
+      setInterval(() => {
+        this.change ? (this.change = false) : (this.change = true);
+      }, 1000);
+    }
+    this.get_diagnostics_slots();
+    this.get_dates();
+  },
+
+  methods: {
+    fetchMembers() {
+      console.log("fetchMembers() called"); // Log a message to the console to verify that the method is being called
+      let member_profile = JSON.parse(localStorage.getItem("member_profile"));
+      let access_token = localStorage.getItem("access_token");
+
+      let endpointUrl = `https://api.coach-dev.tghclinic.com/api/auth/get_family_members_byid/${member_profile.member_unique_id}?token=${access_token}`;
+
+      fetch(endpointUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => {
+          console.log(response);
+
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error(
+              `API request failed with ${response.status} ${response.statusText}`
+            );
+          }
+        })
+        .then((data) => {
+          console.log(data);
+
+          if (data.success === true) {
+            this.members = data.data;
+            console.log(this.members);
+
+            if (this.members.length === 0) {
+              console.warn("No family members found.");
+            }
+          } else {
+            console.error("API request failed:", data);
+          }
+        })
+        .catch((error) => {
+          console.error("API request error:", error);
+        });
+    },
+
+    openBookingForm() {
+      if (this.member_profile) {
+        // replace with your authentication check logic
+        this.$bvModal.show("open-doctor");
+        this.get_doctors_list();
+      } else {
+        window.location.href = "/login"; // replace with your login page URL
+      }
+    },
+    openBookingForm1() {
+      if (this.member_profile) {
+        // replace with your authentication check logic
+        this.$bvModal.show("open-innersight");
+        this.get_doctors_list();
+      } else {
+        window.location.href = "/login"; // replace with your login page URL
+      }
+    },
+    openBookingForm2() {
+      if (this.member_profile) {
+        // replace with your authentication check logic
+        this.$bvModal.show("open-fitness");
+        this.get_doctors_list();
+      } else {
+        window.location.href = "/login"; // replace with your login page URL
+      }
+    },
+    openBookingForm3() {
+      if (this.member_profile) {
+        // replace with your authentication check logic
+        this.$bvModal.show("open-calendly-link");
+        this.get_doctors_list();
+      } else {
+        window.location.href = "/login"; // replace with your login page URL
+      }
+    },
+    get_diagnostics_slots() {
+      let self = this;
+      self.diagnostics_slots_list = [
+        "10:00 AM - 11:00 AM",
+        "11:30 AM - 12:30 PM",
+        "01:00 PM - 02:00 PM",
+        "02:30 PM - 03:30 PM",
+        "04:00 PM - 05:00 PM",
+        "05:30 PM - 06:30 PM",
+      ];
+    },
+    get_uberfit_exercise(exercise) {
+      let self = this;
+      // self.openDoc_loader=true
+      self.uberfit_exercise = [];
+      let action = "getCoach";
+      self.$http
+        .get(
+          self.$get_doctors_slots +
+            "?requestDate=2023-01-10&action=" +
+            action +
+            "&serviceName=" +
+            "uberfit_" +
+            exercise
+        )
+        .then((res) => {
+          self.uberfit_exercise = res.data.coachList;
+        })
+        .catch((err) => {
+          console.log("err", err);
+        })
+        .finally(() => {
+          self.openDoc_loader = false;
+        });
+    },
+    get_dates() {
+      var mS = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "June",
+        "July",
+        "Aug",
+        "Sept",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      let today = 2;
+      let future = 4;
+      var dayMs = 86400000;
+      var ts = dayMs * today;
+      var now = +new Date();
+      var fts = now + ts;
+      let present_date = `${new Date(fts)}`;
+      let temp = present_date.split(" ");
+      let month = "";
+      let cnt = 1;
+      mS.forEach((e) => {
+        if (e == temp[1]) {
+          if (cnt - 10 < 0) month = `0${cnt}`;
+          else month = cnt;
+        }
+        cnt++;
+      });
+      this.min_date = `${temp[3]}-${month}-${temp[2]}`;
+
+      dayMs = 86400000;
+      ts = dayMs * future;
+      now = +new Date();
+      fts = now + ts;
+      present_date = `${new Date(fts)}`;
+      temp = present_date.split(" ");
+      month = "";
+      console.log(temp);
+      cnt = 1;
+      mS.forEach((e) => {
+        if (e == temp[1]) {
+          if (cnt - 10 < 0) {
+            month = `0${cnt}`;
+            console.log(e, cnt);
+          } else {
+            month = cnt;
+          }
+        }
+        cnt += 1;
+      });
+      this.max_date = `${temp[3]}-${month}-${temp[2]}`;
+      console.log(this.max_date, this.min_date);
+    },
+
+    isMobile() {
+      if (
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        )
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    assign_lab_test_function($id, $lab_test) {
+      console.log("id", $id, "test", $lab_test);
+
+      let self = this;
+      self.pin_found = false;
+      self.pincode = "";
+      self.diagnostics_test_id = $id;
+      self.assign_lab_test = $lab_test;
+    },
+
+    get_tests() {
+      let self = this;
+      self.devloader = true;
+      this.$http
+        .post(self.$get_tests + "?token=" + self.user_access_token)
+        .then(function (response) {
+          if (response.data.success == true) {
+            self.diagnostics_test = response.data.data;
+            console.log("diagnostics_test", self.diagnostics_test);
+            self.diagnostics_test.forEach((value, index) => {
+              if (index < 4) {
+                value.bgcolor = "red";
+              } else if (index >= 4 && index < 8) {
+                value.bgcolor = "green";
+              } else if (index >= 8 && index < 12) {
+                value.bgcolor = "red";
+              } else if (index >= 12 && index < 16) {
+                value.bgcolor = "green";
+              } else if (index >= 16 && index < 20) {
+                value.bgcolor = "red";
+              } else if (index >= 20 && index < 24) {
+                value.bgcolor = "green";
+              } else if (index >= 24 && index < 28) {
+                value.bgcolor = "red";
+              } else {
+                value.bgcolor = "green";
+              }
+            });
+          }
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
+      self.devloader = false;
+    },
+
+    get_service_by_id() {
+      let self = this;
+      console.log("Getting service data by ID...");
+  console.log("Current route path:", self.$router.history.current.path);
+
+      this.$http
+        .post(
+          self.$get_service_by_id +
+            self.$router.history.current.path +
+            "?token=" +
+            self.user_access_token
+        )
+        .then(function (response) {
+          if (response.data.success == true) {
+            self.service_data = response.data.data;
+            self.service_urlName = response.data.data.urlname;
+            console.log("service_urlName", self.service_urlName);
+
+            console.log("get_service_by_id_data", self.service_data);
+            console.log("service_id", self.service_data.id);
+            console.log("Service data:", self.service_data);
+
+            self.get_service_plan_by_id(self.service_data.id);
+            if (
+              self.service_data.service_description.outcome_d1 !== "" ||
+              self.service_data.service_description.outcome_d1 !== null
+            ) {
+              self.service_data.service_description.outcome_d1 =
+                self.service_data.service_description.outcome_d1.split(":");
+            }
+            if (
+              self.service_data.service_description.outcome_d2 !== "" ||
+              self.service_data.service_description.outcome_d2 !== null
+            ) {
+              self.service_data.service_description.outcome_d2 =
+                self.service_data.service_description.outcome_d2.split(":");
+            }
+            if (
+              self.service_data.service_description.outcome_d3 !== "" ||
+              self.service_data.service_description.outcome_d3 !== null
+            ) {
+              self.service_data.service_description.outcome_d3 =
+                self.service_data.service_description.outcome_d3.split(":");
+            }
+            if (
+              self.service_data.service_description.outcome_d4 !== "" ||
+              self.service_data.service_description.outcome_d4 !== null
+            ) {
+              self.service_data.service_description.outcome_d4 =
+                self.service_data.service_description.outcome_d4.split(":");
+            }
+            if (
+              self.service_data.service_description.outcome_d5 !== "" ||
+              self.service_data.service_description.outcome_d5 !== null
+            ) {
+              self.service_data.service_description.outcome_d5 =
+                self.service_data.service_description.outcome_d5.split(":");
+            }
+            if (
+              self.service_data.service_description.outcome_d6 !== "" ||
+              self.service_data.service_description.outcome_d6 !== null
+            ) {
+              self.service_data.service_description.outcome_d6 =
+                self.service_data.service_description.outcome_d6.split(":");
+            }
+
+            if (
+              self.service_data.service_description.adv_d1 !== "" ||
+              self.service_data.service_description.adv_d1 !== null
+            ) {
+              self.service_data.service_description.adv_d1 =
+                self.service_data.service_description.adv_d1.split(":");
+            }
+            if (
+              self.service_data.service_description.adv_d2 !== "" ||
+              self.service_data.service_description.adv_d2 !== null
+            ) {
+              self.service_data.service_description.adv_d2 =
+                self.service_data.service_description.adv_d2.split(":");
+            }
+            if (
+              self.service_data.service_description.adv_d3 !== "" ||
+              self.service_data.service_description.adv_d3 !== null
+            ) {
+              self.service_data.service_description.adv_d3 =
+                self.service_data.service_description.adv_d3.split(":");
+            }
+            if (
+              self.service_data.service_description.adv_d4 !== "" ||
+              self.service_data.service_description.adv_d4 !== null
+            ) {
+              self.service_data.service_description.adv_d4 =
+                self.service_data.service_description.adv_d4.split(":");
+            }
+            if (
+              self.service_data.service_description.adv_d5 !== "" ||
+              self.service_data.service_description.adv_d5 !== null
+            ) {
+              self.service_data.service_description.adv_d5 =
+                self.service_data.service_description.adv_d5.split(":");
+            }
+            if (
+              self.service_data.service_description.adv_d6 !== "" ||
+              self.service_data.service_description.adv_d6 !== null
+            ) {
+              self.service_data.service_description.adv_d6 =
+                self.service_data.service_description.adv_d6.split(":");
+            }
+            console.log(
+              "self.service_data.service_description",
+              self.service_data.service_description
+            );
+          }
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
+    },
+
+    get_service_plan_by_id(id) {
+      let self = this;
+      self.$http
+        .post(
+          self.$get_service_plan_by_id + id + "?token=" + self.user_access_token
+        )
+        .then((response) => {
+          if (response.data.success == true) {
+            self.service_plan = response.data.data;
+            console.log("get_service_plan_by_id", self.service_plan);
+
+            self.service_plan.forEach((element) => {
+              element.features = element.features.replaceAll("'", " ");
+            });
+
+            self.service_plan.forEach((item, index) => {
+              if (item.offer_price == "0") self.service_plan.splice(index, 1);
+            });
+
+            self.service_plan.forEach((element) => {
+              element.features = element.features.replaceAll(
+                "true->",
+                `<br/><i  style=" color:green; "class="fa fa-check-circle" aria-hidden="true"></i> &nbsp; &nbsp;`
+              );
+              element.features = element.features.replaceAll(
+                "false->",
+                `<br/><i class="fa fa-times" aria-hidden="true"></i> &nbsp; &nbsp;`
+              );
+            });
+          }
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
+    },
+    get_doctors_list() {
+      let self = this;
+      let action = "getCoach";
+      // self.devloader = true;
+      // console.log(
+      //   "api",
+      //   self.$get_doctors_slots +
+      //     "?requestDate=2023-01-10&action=" +
+      //     action +
+      //     "&serviceName=" +
+      //     self.service_urlName
+      // );
+      this.$http
+        .get(
+          self.$get_doctors_slots +
+            "?requestDate=2023-01-10&action=" +
+            action +
+            "&serviceName=" +
+            self.service_urlName
+        )
+        .then(function (response) {
+          // console.log("response", self.$get_doctors_slots + "?requestDate=2023-01-10&action=" + action + "&serviceName=" + self.service_urlName)
+          console.log("response", response.data);
+          // if (response.data.success == "success") {
+          self.doctors_list = response.data.coachList;
+          console.log("doctors_list", self.doctors_list);
+          // }
+        })
+        .catch(function (error) {
+          console.log(error);
+        })
+        .finally(() => {
+          // self.devloader = false;
+          self.openDoc_loader = false;
+        });
+    },
+    get_slots(docEmail, date) {
+      let self = this;
+      // console.log(docEmail, date);
+      let action = "getSlots";
+      let selected_date = date.replaceAll(".", "-");
+      // console.log(docEmail, date);
+      // self.slots_list = [];
+      self.openSlot_loader = true;
+      self.$http
+        .get(
+          self.$get_doctors_slots +
+            "?email=" +
+            docEmail +
+            "&requestDate=" +
+            selected_date +
+            "&action=" +
+            action +
+            "&serviceName=" +
+            self.service_urlName
+        )
+        .then((res) => {
+          // self.slots_list = res.data;
+          self.slots_list = [];
+          let temp = res.data.availableSlots;
+          // console.log("slots_list",self.slots_list.availableSlots)
+          for (let index = 0; index < temp.length; index++) {
+            const e = temp[index];
+            self.slots_list.push(e);
+          }
+        })
+        .catch(function (error) {
+          console.log(error);
+        })
+        .finally(() => {
+          self.openSlot_loader = false;
+          console.log("slots", self.slots_list);
+        });
+    },
+    get_selected_doc(docEmail) {
+      let self = this;
+      self.openDoc_loader = true;
+      let temp = self.doctors_list;
+      temp.forEach((e) => {
+        if (e.email == docEmail) {
+          self.member_doctor = e.name;
+          return;
+        }
+      });
+    },
+    onSubmit() {
+      let self = this;
+
+      self.pincodeError = false;
+      self.pincodeErrorText = "";
+      if (self.pincode == "") {
+        self.pincodeError = true;
+        self.pincodeErrorText = "Please Enter Pincode";
+        return;
+      }
+      if (self.pincode.length != 5 && self.pincode.length != 6) {
+        self.pincodeError = true;
+        self.pincodeErrorText = "Please Enter Valid Pincode";
+        return;
+      }
+      self.devloader = true;
+      this.$http
+        .post(
+          self.$pincode_check +
+            self.pincode +
+            "?token=" +
+            self.user_access_token
+        )
+        .then(function (response) {
+          if (response.data.success == true) {
+            console.log("response.data.data", response.data.data.isAvailable);
+            if (response.data.data.isAvailable == "notavailable") {
+              self.devloader = false;
+              self.pincodeError = true;
+              self.pincodeErrorText =
+                "We don't service this pincode. Would you like to try another pincode?";
+            } else {
+              self.devloader = false;
+              self.pin_found = true;
+            }
+          }
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
+
+      console.log("submit");
+    },
+
+    pincode_order_function() {
+      let self = this;
+      self.successMessage = false;
+      self.member_first_name_Error = false;
+      self.member_last_name_Error = false;
+      self.member_mobile_Error = false;
+      self.member_email_Error = false;
+      self.member_slot_Error = false;
+      self.member_date_Error = false;
+      var member_validation = self.member_validation(
+        self.member_first_name,
+        self.member_last_name,
+        self.member_mobile,
+        self.member_email,
+        self.member_slot
+      );
+      console.log("member_validation", member_validation);
+      if (member_validation == true) {
+        if (self.addressline1 == "") {
+          self.addressline1Error = true;
+          self.addressline1ErrorText = "Please Enter Address Line 1";
+          return;
+        }
+        if (self.addressline2 == "") {
+          self.addressline2Error = true;
+          self.addressline2ErrorText = "Please Enter Address Line 2";
+          return;
+        }
+        if (self.city == "") {
+          self.cityError = true;
+          self.cityErrorText = "Please Enter City";
+          return;
+        }
+        self.devloader = true;
+        let dbformData = new FormData();
+        dbformData.append("service_id", self.service_url_id);
+        dbformData.append(
+          "address",
+          self.addressline1 + "," + self.addressline2 + "," + self.city
+        );
+        dbformData.append("pincode", self.pincode);
+        dbformData.append("test_id", self.diagnostics_test_id);
+        dbformData.append("checkupname", self.assign_lab_test);
+        dbformData.append("member_first_name", self.member_first_name);
+        dbformData.append("member_last_name", self.member_last_name);
+        dbformData.append("member_mobile", self.member_mobile);
+        dbformData.append("member_email", self.member_email);
+        self.$http
+          .post(
+            self.$service_booking_via_google_sheet +
+              `?dateTime=${self.date}&memberID=${self.member_profile.member_unique_id}
+                &bookedBy=${self.member_profile.email}&name=${self.member_profile.first_name} ${self.member_profile.last_name}&email=${self.member_profile.email}
+                &orgID=${self.member_profile.orgid}&orgName=${self.member_profile.organization_data.name}&service=${self.service_urlName}&serviceProvider=TGHC&labtestName="none"
+                &scheduledDate=${self.member_date}&scheduledTime=${self.member_slot}&pincode=${self.pincode}&address=${self.addressline1},${self.addressline2},${self.city}&memberNotes=${self.member_concern}`
+          )
+          .then(function (response) {
+            if (response.data.success == "success") {
+              let formData = new FormData();
+              formData.append("fname", self.member_profile.first_name);
+              formData.append("lname", self.member_profile.last_name);
+              formData.append("dob", self.member_profile.date_of_birth);
+              formData.append("gender", self.member_profile.gender);
+              formData.append(
+                "phone",
+                self.member_profile.phone_number_primary
+              );
+              formData.append(
+                "address",
+                self.addressline1 + "," + self.addressline2 + "," + self.city
+              );
+              formData.append("email", self.member_profile.email);
+              formData.append("pincode", self.pincode);
+              formData.append("checkupname", self.assign_lab_test);
+              self.$http
+                .post(
+                  self.$pincode_order,
+                  formData + "?token=" + self.user_access_token
+                )
+                .then(function (response) {
+                  self.devloader = false;
+                  console.log("response.data.data", response.data.data);
+                  // self.$bvModal.hide("open-booking");
+                  self.clear_data();
+                  self.successMessage = true;
+                  self.successMessageText = response.data.message;
+                  // Vue.notify({ type: "success", title: response.data.message });
+                });
+
+              self.devloader = false;
+            } else {
+              Vue.notify({ type: "error", title: response.data.message });
+            }
+
+            self.devloader = false;
+          });
+      }
+    },
+
+    clear_data() {
+      let self = this;
+      // self.pin_found=false;
+      // self.pincode="";
+      self.pincode = "";
+      self.addressline1 = "";
+      self.addressline2 = "";
+      self.city = "";
+      self.member_first_name_Error = false;
+      self.member_last_name_Error = false;
+      self.member_mobile_Error = false;
+      self.member_email_Error = false;
+      self.member_slot_Error = false;
+      self.member_date_Error = false;
+
+      self.addressline1Error = false;
+      self.addressline2Error = false;
+      self.cityError = false;
+      self.member_doctorError = false;
+      self.member_concernError = false;
+    },
+
+    save_service_id_function($id) {
+      let self = this;
+      self.save_service_id = $id;
+      console.log("save_service_id", self.save_service_id);
+      if (self.save_service_id == "7") {
+        self.devloader = true;
+        let formData = new FormData();
+        formData.append("service_id", self.save_service_id);
+        formData.append("member_first_name", self.member_first_name);
+        formData.append("member_last_name", self.member_last_name);
+        formData.append("member_mobile", self.member_mobile);
+        formData.append("member_email", self.member_email);
+        self.$http
+          .post(
+            self.$service_booking_via_google_sheet +
+              `?dateTime=${self.date}&memberID=${self.member_profile.member_unique_id}
+                &bookedBy=${self.member_profile.email}&name=${self.member_profile.first_name} ${self.member_profile.last_name}&email=${self.member_profile.email}
+                &orgID=${self.member_profile.orgid}&orgName=${self.member_profile.organization_data.name}&service=${self.service_urlName}&serviceProvider=TGHC&labtestName="none"
+                &scheduledDate=${self.member_date}&scheduledTime=${self.member_slot}&pincode=${self.pincode}&address=${self.addressline1},${self.addressline2},${self.city}&memberNotes=${self.member_concern}`
+          )
+          .then(function (response) {
+            if (response.data.success == "success") {
+              // Vue.notify({ type: "success", title: response.data.message });
+              // self.$bvModal.show("open-resurge");
+            } else {
+              Vue.notify({ type: "error", title: response.data.message });
+            }
+            self.devloader = false;
+          });
+      }
+    },
+
+    calendly_link_booking() {
+      let self = this;
+      self.clear_data();
+      var member_validation = self.member_validation(
+        self.member_first_name,
+        self.member_last_name,
+        self.member_mobile,
+        self.member_email,
+        self.member_slot,
+        self.member_date
+      );
+      console.log("member_validation", member_validation);
+      if (member_validation == true) {
+        self.devloader = true;
+        self.$http
+          .post(
+            self.$get_coach_by_id +
+              self.member_profile.coach_id +
+              "?token=" +
+              self.user_access_token
+          )
+          .then(function (response) {
+            if (response.data.success == true) {
+              self.coach_calendly_link = response.data.data.calendly_link;
+              console.log("coach_calendly_link", self.coach_calendly_link);
+              if (self.coach_calendly_link !== "") {
+                let formData = new FormData();
+                formData.append("service_id", self.save_service_id);
+                formData.append("coach", self.member_profile.coach_id);
+                formData.append("member_first_name", self.member_first_name);
+                formData.append("member_last_name", self.member_last_name);
+                formData.append("member_mobile", self.member_mobile);
+                formData.append("member_email", self.member_email);
+                self.$http
+                  .post(
+                    self.$service_booking_via_google_sheet +
+                      `?dateTime=${self.date}&memberID=${self.member_profile.member_unique_id}
+                &bookedBy=${self.member_profile.email}&name=${self.member_profile.first_name} ${self.member_profile.last_name}&email=${self.member_profile.email}
+                &orgID=${self.member_profile.orgid}&orgName=${self.member_profile.organization_data.name}&service=${self.service_urlName}&serviceProvider=TGHC&labtestName="none"
+                &scheduledDate=${self.member_date}&scheduledTime=${self.member_slot}&pincode=${self.pincode}&address=${self.addressline1},${self.addressline2},${self.city}&memberNotes=${self.member_concern}`
+                  )
+                  .then(function (response) {
+                    if (response.data.success == "success") {
+                      self.devloader = false;
+                      // Vue.notify({ type: "success", title: response.data.message });
+                      //  self.$bvModal.hide("open-calendly-link");
+                      self.successMessage = true;
+                      self.successMessageText = response.data.message;
+                      // window.open(self.coach_calendly_link, "_self");
+                    }
+                  });
+              } else {
+                Vue.notify({
+                  type: "error",
+                  title: "Link not generated. Please try after some time",
+                });
+              }
+            } else {
+              self.error_msg = response.data.message;
+            }
+          })
+          .catch(function (error) {
+            console.warn(error);
+          });
+      }
+    },
+
+    innersight_booking() {
+      let self = this;
+      self.clear_data();
+      var member_validation = self.member_validation(
+        self.member_first_name,
+        self.member_last_name,
+        self.member_mobile,
+        self.member_email,
+        self.member_slot,
+        self.member_date
+      );
+      console.log("member_validation", member_validation);
+      if (member_validation == true) {
+        self.devloader = true;
+        let formData = new FormData();
+        formData.append("service_id", self.save_service_id);
+        formData.append("member_first_name", self.member_first_name);
+        formData.append("member_last_name", self.member_last_name);
+        formData.append("member_mobile", self.member_mobile);
+        formData.append("member_email", self.member_email);
+        self.$http
+          .post(
+            self.$service_booking_via_google_sheet +
+              `?dateTime=${self.date}&memberID=${self.member_profile.member_unique_id}
+                &bookedBy=${self.member_profile.email}&name=${self.member_profile.first_name} ${self.member_profile.last_name}&email=${self.member_profile.email}
+                &orgID=${self.member_profile.orgid}&orgName=${self.member_profile.organization_data.name}&service=${self.service_urlName}&serviceProvider=TGHC&labtestName="none"
+                &scheduledDate=${self.member_date}&scheduledTime=${self.member_slot}&pincode=${self.pincode}&address=${self.addressline1},${self.addressline2},${self.city}&memberNotes=${self.member_concern}`
+          )
+          .then(function (response) {
+            if (response.data.success == "success") {
+              // window.open(response.data.data, "_self");
+              self.successMessage = true;
+              self.successMessageText =
+                "Thank you for booking with us, our team will get back to you shortly.";
+                window.location.href = "/services";
+            } else {
+              Vue.notify({ type: "error", title: response.data.message });
+            }
+
+            self.devloader = false;
+          });
+      }
+    },
+
+    doctor_booking() {
+      let self = this;
+      self.clear_data();
+
+      var member_validation = self.member_validation(
+        self.member_first_name,
+        self.member_last_name,
+        self.member_mobile,
+        self.member_email,
+        self.member_slot,
+        self.member_date
+      );
+      console.log("member_validation", member_validation);
+      if (member_validation == true) {
+        self.member_doctorError = false;
+        self.member_concernError = false;
+        self.successMessage = false;
+        if (self.member_doctor == "") {
+          self.member_doctorError = true;
+          self.member_doctorErrorText = "Please select doctor";
+          return;
+        }
+        if (self.member_concern == "") {
+          self.member_concernError = true;
+          self.member_concernErrorText = "Please Enter member concern";
+          return;
+        }
+        self.devloader = true;
+        let formData = new FormData();
+        formData.append("member_first_name", self.member_first_name);
+        formData.append("member_last_name", self.member_last_name);
+        formData.append("member_mobile", self.member_mobile);
+        formData.append("member_email", self.member_email);
+        formData.append("service_id", self.save_service_id);
+        formData.append("member_doctor", self.member_doctor);
+        formData.append("member_concern", self.member_concern);
+        self.$http
+          .post(
+            self.$service_booking_via_google_sheet +
+              `?dateTime=${self.date}&memberID=${self.member_profile.member_unique_id}
+                &bookedBy=${self.member_profile.email}&name=${self.member_profile.first_name} ${self.member_profile.last_name}&email=${self.member_profile.email}
+                &orgID=${self.member_profile.orgid}&orgName=${self.member_profile.organization_data.name}&service=${self.service_urlName}&serviceProvider=TGHC&labtestName="none"
+                &scheduledDate=${self.member_date}&scheduledTime=${self.member_slot}&pincode=${self.pincode}&address=${self.addressline1},${self.addressline2},${self.city}&memberNotes=${self.member_concern}`
+          )
+          .then(function (response) {
+            console.log("response", response.data);
+            if (response.data.success == "success") {
+              self.member_doctor = "";
+              self.member_concern = "";
+              self.member_doctorError = false;
+              self.member_concernError = false;
+              self.successMessage = true;
+              self.successMessageText =
+                "Thank you for booking with us, our team will get back to you shortly.";
+                window.location.href = "/services";
+            }
+            self.devloader = false;
+          });
+      }
+    },
+
+    fitness_booking() {
+      let self = this;
+      self.clear_data();
+
+      var member_validation = self.member_validation(
+        self.member_first_name,
+        self.member_last_name,
+        self.member_mobile,
+        self.member_email,
+        self.member_slot,
+        self.member_date
+      );
+      console.log("member_validation", member_validation);
+      if (member_validation == true) {
+        if (self.exercise == "") {
+          self.exerciseError = true;
+          self.exerciseErrorText = "Please select exercise";
+          return;
+        }
+        self.devloader = true;
+        let formData = new FormData();
+        formData.append("service_id", self.save_service_id);
+        formData.append("exercise", self.exercise);
+        formData.append("member_first_name", self.member_first_name);
+        formData.append("member_last_name", self.member_last_name);
+        formData.append("member_mobile", self.member_mobile);
+        formData.append("member_email", self.member_email);
+        self.$http
+          .post(
+            self.$service_booking_via_google_sheet +
+              `?dateTime=${self.date}&memberID=${self.member_profile.member_unique_id}
+                &bookedBy=${self.member_profile.email}&name=${self.member_profile.first_name} ${self.member_profile.last_name}&email=${self.member_profile.email}
+                &orgID=${self.member_profile.orgid}&orgName=${self.member_profile.organization_data.name}&service=${self.service_urlName}&serviceProvider=TGHC&labtestName="none"
+                &scheduledDate=${self.member_date}&scheduledTime=${self.member_slot}&pincode=${self.pincode}&address=${self.addressline1},${self.addressline2},${self.city}&memberNotes=${self.member_concern}`
+          )
+          .then(function (response) {
+            if (response.data.success == "success") {
+              // window.open(response.data.data, "_self");
+              // Vue.notify({ type: "success", title: response.data.message });
+              self.$bvModal.hide("open-fitness");
+              self.uberfit_exercise = [];
+              self.successMessageText =
+                "Thank you for booking with us, our team will get back to you shortly.";
+                window.location.href = "/services";
+            } else {
+              self.exerciseError = true;
+              self.exerciseErrorText = response.data.message;
+            }
+            self.devloader = false;
+          });
+      }
+    },
+
+    member_validation(
+      member_first_name,
+      member_last_name,
+      member_mobile,
+      member_email,
+      member_slot,
+      member_date
+    ) {
+      console.log("member_first_name", member_first_name);
+      console.log("member_last_name", member_last_name);
+      console.log("member_mobile", member_mobile);
+      console.log("member_email", member_email);
+
+      if (member_first_name == "") {
+        this.member_first_name_Error = true;
+        this.member_first_name_ErrorText = "Please enter First Name";
+        return false;
+      }
+      if (member_last_name == "") {
+        this.member_last_name_Error = true;
+        this.member_last_name_ErrorText = "Please enter Last Name";
+        return false;
+      }
+      if (member_mobile == "") {
+        this.member_mobile_Error = true;
+        this.member_mobile_ErrorText = "Please enter Your Mobile No";
+        return false;
+      }
+      if (member_email == "") {
+        this.member_email_Error = true;
+        this.member_email_ErrorText = "Please enter Email";
+        return false;
+      }
+      if (member_slot == "") {
+        this.member_slot_Error = true;
+        this.member_slot_ErrorText = "Please select your slot";
+        return false;
+      }
+      if (member_date == "") {
+        this.member_date_Error = true;
+        this.member_date_ErrorText = "Please select your Date";
+        return false;
+      }
+      return true;
+    },
+
+    isLetter(e) {
+      let char = String.fromCharCode(e.keyCode);
+      if (/^[A-Z a-z]+$/.test(char)) return true;
+      else e.preventDefault();
+    },
+
+    isNumber(e) {
+      let char = String.fromCharCode(e.keyCode);
+      if (/^[0-9]+$/.test(char)) return true;
+      else e.preventDefault();
+    },
+
+    go_on_service() {
+      this.$router.push("/services");
+    },
+  },
+};
